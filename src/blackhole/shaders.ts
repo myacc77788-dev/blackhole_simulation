@@ -126,10 +126,11 @@ vec3 background(vec3 d){
 
 // ------------------------------------------------------------------ disk
 // Novikov-Thorne-like radial temperature profile, normalized to peak = uDiskTemp
+// Peak of x^(-3/4)·(1-1/√x)^(1/4) is at x≈1.36 where f≈0.489, hence norm ≈ 2.045
 float diskTemp(float r){
   float x = max(r / uDiskInner, 1.0001);
   float f = pow(x, -0.75) * pow(max(1.0 - inversesqrt(x), 0.0), 0.25);
-  return uDiskTemp * f * 2.06;
+  return uDiskTemp * f * 2.045;
 }
 
 float diskDensity(vec3 p, out float radius){
@@ -174,9 +175,9 @@ void main(){
     if(i >= steps) break;
     float r = length(pos);
 
-    // adaptive step: fine near the hole and near the disk plane
-    float dt = clamp(0.075 * (r - 0.88), 0.012, 0.9);
-    if(r < uDiskOuter * 1.35) dt = min(dt, 0.035 + 0.28 * abs(pos.y) + 0.012 * r);
+    // adaptive step: fine near the horizon and near the disk midplane
+    float dt = clamp(0.065 * max(r - 0.92, 0.0), 0.005, 0.9);
+    if(r < uDiskOuter * 1.5) dt = min(dt, 0.025 + 0.22 * abs(pos.y) + 0.008 * r);
 
     // ---- volumetric emission at current sample
     float rad;
@@ -184,16 +185,20 @@ void main(){
     if(dens > 0.0005){
       vec3 kobs = -normalize(rd);                    // unit vector emitter -> observer
       vec3 vhat = normalize(cross(vec3(0.0, 1.0, 0.0), vec3(pos.x, 0.0, pos.z)));
-      float beta = clamp(sqrt(0.5 / max(rad - 1.0, 0.35)), 0.0, 0.94);
+      // Relativistic circular orbit velocity in Schwarzschild: β = √(M/(r-2M))
+      // With M = 0.5 (rₛ = 1): β = √(0.5/(r-1))   — exact GR expression
+      float beta = sqrt(0.5 / max(rad - 1.0, 1e-4));
+      beta = min(beta, 0.98);                        // safety cap below photon sphere
       float gam = inversesqrt(max(1.0 - beta * beta, 1e-4));
       float dop = 1.0 / max(gam * (1.0 - dot(vhat * beta, kobs)), 0.05);
-      float grav = sqrt(max(1.0 - 1.0 / max(r, 1.001), 0.02));
+      float grav = sqrt(max(1.0 - 1.0 / max(r, 1.001), 0.01));
       float g = mix(1.0, dop * grav, uDoppler);
       g = clamp(g, 0.05, 6.0);
 
       float T = diskTemp(rad);
       vec3 col = blackbody(T * g);
-      float lum = pow(T / uDiskTemp, 3.2) * pow(g, 4.0);
+      // Stefan–Boltzmann: bolometric flux ∝ T⁴, with relativistic correction g⁴
+      float lum = pow(T / uDiskTemp, 4.0) * pow(g, 4.0);
       acc += trans * col * lum * dens * uDiskBright * dt * 3.0;
       trans *= exp(-dens * dt * 5.0);
       if(trans < 0.004) break;

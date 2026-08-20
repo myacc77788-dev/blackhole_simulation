@@ -199,7 +199,7 @@ export default function App() {
                 digits={0}
                 onChange={(v) => set('diskTemp', v)}
               />
-              <Slider label="Inner radius" value={params.diskInner} min={1.6} max={8} step={0.05} unit=" rs" onChange={(v) => set('diskInner', v)} />
+              <Slider label="Inner radius" value={params.diskInner} min={3.0} max={8} step={0.05} unit=" rs" onChange={(v) => set('diskInner', v)} />
               <Slider label="Outer radius" value={params.diskOuter} min={6} max={40} step={0.5} unit=" rs" digits={1} onChange={(v) => set('diskOuter', v)} />
               <Slider label="Scale height" value={params.diskThick} min={0.04} max={1.2} onChange={(v) => set('diskThick', v)} />
               <Slider label="Turbulence" value={params.diskNoise} min={0} max={1} onChange={(v) => set('diskNoise', v)} />
